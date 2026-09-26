@@ -1,31 +1,21 @@
 ---
 title: Домашнее задание по Автоматизации обработки данных
 author:
-   - name: Имя Студента 1
-     url: https://github.com/github-username-of-author-1
-     roles: Координатор
-   - name: Имя Студента 2
-     url: https://github.com/github-username-of-author-2
-     roles: Лабораторные измерения
+   - name: Ситькова Дарья Александровна
+     url: https://github.com/SitkovaDarya
+     roles: Координатор, lb, vs, gf
 format:
   html:
     embed-resources: true
 ---
-
-Каждый **самостоятельно** заполняет сведения о себе в разделе `author` выше, делает коммит и загружает в репозиторий.
-В поле `url` укажите ссылку на свой GitHub.
-В поле `roles` укажите свою роль или данные, за которые отвечаете.
-См. [документацию Quarto](https://quarto.org/docs/authoring/front-matter.html#authors-and-affiliations).
-
 ```{r}
 #| include: false
-
-# пакеты подключаются в первом чанке
+library(tidyverse)
+library(flextable)
+library(gtsummary)
 ```
 
-Это пример клинического исследования с двумя дозами препарата Xanomeline и группой Placebo.
-Каждая команда анализирует только группы и параметры, указанные для её варианта.
-Напишите номер своего варианта и замените этот текст описанием, какие показатели и на каких визитах будут анализироваться.
+Вариант 14. В отчете рассматриваются две группы лечения: Placebo и Xanomeline High Dose. Из лабораторных показателей анализируются HGB, VITB12 на визите SCREENING 1. На визите SCREENING 1 и WEEK 4 анализируется вес (WEIGHT). Анализируется генотип APOE для  каждого участника.
 
 ## 1. Импорт и очистка данных
 
@@ -34,41 +24,52 @@ format:
 
 ### 1.1. Пациенты
 
-В файле `data/dm.csv` содержатся демографические данные участников исследования.
-Вам понадобятся следующие столбцы:
-
-- `USUBJID` — уникальный идентификатор участника
-- `AGE` — возраст на момент скрининга, полных лет
-- `SEX` — пол участника
-- `ARM` — группа лечения
-
-1. Импортируйте данные.
-2. Какой формат у этих данных: длинный или широкий? Объясните ответ.
-3. Оставьте только нужные столбцы и переименуйте `USUBJID` в `ID`.
-
 ```{r}
-# read_csv
-# select, rename
-# nrow, table, count
+dm_all <- read_csv("data/dm.csv")
 ```
 
-4. Проверьте, что каждому участнику соответствует ровно одна строка.
-   Если идентификатор участника встречается несколько раз, выведите все такие строки.
+dm.csv — широкий формат, потому что каждая строка соответствует одному участнику (уникальный USUBJID встречается один раз), а разные признаки — возраст AGE, пол SEX, группа лечения ARM — лежат в отдельных столбцах.
 
 ```{r}
-# stopifnot, stop
+dm1 <- select(dm_all, USUBJID, AGE, SEX, ARM)
+dm <- rename(dm1, ID = USUBJID)
 ```
 
-5. Выведите общее количество людей, оцененных для включения в исследование.
-6. Какой процент не прошел скрининг?
-7. Оставьте участников с группами лечения из вашего варианта.
-   Преобразуйте столбец `ARM` в фактор и выведите число участников в каждой группе.
-8. Сохраните финальный датафрейм в переменную `dm`.
+```{r}
+counts <- count(dm, ID)
+repeats <- filter(counts, n > 1)
+if (nrow(repeats) > 0) {
+  print(repeats)
+  stop()
+}
+```
+```{r}
+nrow(dm_all)
+```
 
 ```{r}
-# filter
-# mutate
-# factor
+table(is.na(dm_all$ARM) | dm_all$ARM == "Screen Failure")
+```
+```{r}
+screen_failure <- sum(is.na(dm_all$ARM) | dm_all$ARM == "Screen Failure")
+screen_failure
+```
+
+```{r}
+percent_screen_failure <- 100 * screen_failure / nrow(dm_all)
+percent_screen_failure
+```
+  
+```{r}
+dm_filtered <- filter(dm, ARM == "Placebo" | ARM == "Xanomeline High Dose")
+dm_filtered <- mutate(
+  dm_filtered,
+  ARM = factor(ARM, levels = c("Placebo", "Xanomeline High Dose"))
+)
+table(dm_filtered$ARM)
+```
+```{r}
+dm <- dm_filtered
 ```
 
 ### 1.2. Лабораторные измерения
