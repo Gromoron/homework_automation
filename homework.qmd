@@ -1,9 +1,9 @@
 ---
 title: Домашнее задание по Автоматизации обработки данных
 author:
-   - name: Ситькова Дарья Александровна
-     url: https://github.com/SitkovaDarya
-     roles: Координатор
+   - name: Васька Садовин
+     url: https://github.com/Gromoron
+     roles: пешка
 format:
   html:
     embed-resources: true
@@ -180,13 +180,15 @@ dm <- dm_filtered
 - `VISIT` — визит исследования
 
 1. Импортируйте данные.
-2. Какой формат у этих данных: длинный или широкий? Объясните ответ.
+2. Какой формат у этих данных: длинный или широкий? Объясните ответ. 
    Какое минимальное и максимальное число строк на одного участника?
+Формат данных длинный, так как на одно наблюдение (n) приходится более одной строки, даже при том что строки все еще имеют много столбцов. у всех участников 12 строк.
 
 ```{r}
-# read_csv
-# select, rename
-# count
+gf_raw <- (read.csv("data/gf.csv"))
+gf_subset <- select(gf_raw, "USUBJID", GFORRES, GFSYM, GFPVRID, VISIT)
+gf_subset <- rename(gf_subset, ID = USUBJID)
+gf_subset |> count(ID)
 ```
 
 3. Оставьте только участников своей команды.
@@ -194,6 +196,10 @@ dm <- dm_filtered
 4. Оставьте только ген `APOE` и варианты с идентификаторами `rs429358` и `rs7412`.
 
 ```{r}
+gf_subset2 <- gf_subset |>
+  left_join(dm, by = "ID") |>
+  filter(GFSYM == "APOE" | GFPVRID == "rs429358" | GFPVRID == "rs7412")
+
 # left_join, semi_join
 # filter
 ```
@@ -215,15 +221,34 @@ dm <- dm_filtered
    Идентификатор участника должен находиться в столбце `ID`.
 
 ```{r}
-# pivot_wider
-# if_else, case_when
-# count
+apoe_genotype <- gf_subset2 |>
+  pivot_wider(
+    id_cols = c(ID, VISIT, AGE, SEX, ARM),
+    names_from = GFPVRID,
+    values_from = GFORRES
+  )
+
+gf_wide <- mutate(
+  apoe_genotype,
+  apoe_genotype = case_when(
+    rs429358 == "T/T" & rs7412 == "T/T" ~ "ε2/ε2",
+    rs429358 == "T/T" & rs7412 == "C/T" ~ "ε2/ε3",
+    rs429358 == "T/C" & rs7412 == "C/T" ~ "ε2/ε4",
+    rs429358 == "T/T" & rs7412 == "C/C" ~ "ε3/ε3",
+    rs429358 == "T/C" & rs7412 == "C/C" ~ "ε3/ε4",
+    rs429358 == "C/C" & rs7412 == "C/C" ~ "ε4/ε4",
+    TRUE ~ NA_character_
+  )
+)
+count(gf_wide, ID)
+count(gf_wide, apoe_genotype)
 ```
 
 8. Проверьте, что `gf_wide` содержит ровно одну строку на участника.
 
 ```{r}
-# stopifnot, stop
+any(duplicated(gf_wide$ID))
+stopifnot(!any(duplicated(gf_wide$ID)))
 ```
 
 ## 2. Объединение данных
