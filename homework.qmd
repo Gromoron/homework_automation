@@ -3,7 +3,7 @@ title: Домашнее задание по Автоматизации обра�
 author:
    - name: Ситькова Дарья Александровна
      url: https://github.com/SitkovaDarya
-     roles: Координатор, lb, vs, gf
+     roles: Координатор
 format:
   html:
     embed-resources: true
