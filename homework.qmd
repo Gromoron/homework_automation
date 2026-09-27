@@ -213,9 +213,6 @@ gf_subset |> count(ID)
 gf_subset2 <- gf_subset |>
   left_join(dm, by = "ID") |>
   filter(GFSYM == "APOE" | GFPVRID == "rs429358" | GFPVRID == "rs7412")
-
-# left_join, semi_join
-# filter
 ```
 
 | rs429358 | rs7412 | Генотип APOE |
