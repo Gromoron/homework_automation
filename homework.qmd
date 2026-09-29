@@ -340,28 +340,33 @@ any(duplicated(gf_wide$ID))
 stopifnot(!any(duplicated(gf_wide$ID)))
 ```
 
+
 ## 2. Объединение данных
 
-Этот раздел выполняет координатор. Он переносит в основную ветку `main` пункты 1.2-1.4, выполненные участниками в своих ветках.
-
-После объединения веток отчёт должен создавать четыре датафрейма: `dm`, `lb_wide`, `vs_wide` и `gf_wide`.
-Все датафреймы должны быть в широком формате: по одной строке на участника.
-Присоедините `lb_wide`, `vs_wide` и `gf_wide` к `dm` по столбцу `ID`.
-Сохраните результат в отдельную переменную для дальнейшего анализа.
-
 ```{r}
-# left_join
-```
+gf_wide1 <- select(gf_wide, ID, rs429358, rs7412, apoe_genotype)
 
+all_data <- left_join(dm, lb_wide, by = "ID")
+all_data <- left_join(all_data, vs_wide, by = "ID")
+all_data <- left_join(all_data, gf_wide1, by = "ID")
+all_data
+```
 Проверьте, что число строк в результате совпадает с числом участников в `dm` и что не появилось повторяющихся значений `ID`.
 
 ```{r}
-# count, nrow
-# stopifnot, stop
+stopifnot(nrow(all_data) == nrow(dm))
+stopifnot(n_distinct(all_data$ID) == nrow(dm))
 ```
 
-Для каждого столбца итогового датафрейма выведите число непустых и число пропущенных значений.
+```{r}
+n_missing <- colSums(is.na(all_data))
+n_not_missing <- nrow(all_data) - n_missing
 
+n_not_missing
+n_missing
+```
+
+В таблице all_data 170 строк (по одной на каждого участника). Столбцы ID, AGE, SEX, ARM, SCREENING 1_Height, SCREENING 1_Weight, rs429358, rs7412 и apoe_genotype заполнены полностью. Пропуски есть в лабораторных показателях (HGB — 4, VITB12 — 3) и в весе на визите WEEK 4 (16 пропусков) — это пациенты, у которых нет измерения на соответствующем визите.
 ## 3. Описательные статистики и отчёт
 
 Каждый выполняет свой подраздел в отдельной ветке, используя объединенные данные.
