@@ -156,23 +156,6 @@ if (nrow(lb_repeats) > 0) {
 ```
 
 ### 1.3. Витальные показатели
-группы лечения, лабораторные показатели и визит с измерением веса.
-
-| Команда | Группы лечения (`ARM`) | Лабораторные показатели (`LBTESTCD`) | Визит для веса (`VISIT`) |
-
-| 4 | Placebo, Xanomeline Low Dose | HGB, PLAT | WEEK 4 |
-Файл `data/vs.csv` содержит результаты измерений витальных показателей участников исследования, включая рост и вес.
-Вам понадобятся следующие столбцы:
-
-- `USUBJID` — уникальный идентификатор участника
-- `VSTESTCD` / `VSTEST` — код / название измеряемого показателя
-- `VSSTRESN` — числовой результат измерения
-- `VISIT` — визит исследования
-
-1. Импортируйте данные.
-2. Какой формат у этих данных: длинный или широкий? Объясните ответ.
-   Какое минимальное и максимальное число строк на одного участника?
-3. На каких визитах измеряли рост (`HEIGHT`) и вес (`WEIGHT`)?
 
 ```{r}
 # read_csv
@@ -186,7 +169,7 @@ table(vit_data$USUBJID)
 vit_data %>% count(USUBJID)
 
 #'''
-#у нас пациенты занимают больше одной строки, значит это long-формат 
+#у нас пациенты занимают больше одной строки, значит это long-формат
 #'''
 
 # Какое минимальное и максимальное число строк на одного участника?
@@ -201,49 +184,33 @@ vit_data %>%
   distinct(VSTEST, VISIT)
 
 #'''
-#  VSTEST VISIT      
-#  <chr>  <chr>      
+#  VSTEST VISIT
+#  <chr>  <chr>
 #1 Height SCREENING 1
 #2 Weight SCREENING 1
-#3 Weight BASELINE   
-#4 Weight WEEK 2     
-#5 Weight WEEK 4     
-#6 Weight WEEK 6     
-#7 Weight WEEK 8     
+#3 Weight BASELINE
+#4 Weight WEEK 2
+#5 Weight WEEK 4
+#6 Weight WEEK 6
+#7 Weight WEEK 8
 #8 Weight WEEK 12
-#''' 
+#'''
 ```
 
-4. Оставьте только участников своей команды.
-   Используйте для этого датафрейм `dm`, созданный координатором в разделе 1.1.
 ```{r}
 vit_data_ourpats <- vit_data %>%
   filter(USUBJID %in% dm$ID)
 ```
 
-5. Оставьте измерения роста и веса на визите `SCREENING 1`, а также измерения веса на визите вашей команды.
-
 ```{r}
-#dm
-
 vit_data_w4_s1 <- vit_data %>%
   filter(VISIT %in% c("WEEK 4", "SCREENING 1"))
-
-# left_join, semi_join
-# filter
 ```
 ```{r}
 
 vit_data_hw <- vit_data_w4_s1 %>%
   filter(VSTEST %in% c("Weight", "Height"))
-
-# left_join, semi_join
-# filter
 ```
-6. Переведите данные в широкий формат и сохраните в переменной `vs_wide`.
-   В датафрейме должны быть столбцы для всех трёх отобранных измерений.
-   Подсказка: значение, которое вы передаёте в `names_from`, должно быть уникальным для каждого участника. Проверьте это до вызова `pivot_wider()`.
-   Идентификатор участника должен находиться в столбце с названием `ID`.
 
 ```{r}
 # переименование в ID
@@ -258,13 +225,7 @@ vs_wide <- vit_data_hw_id %>%
     names_from = c(VISIT, VSTEST),
     values_from = VSORRES
   )
-# select
-# distinct, count
-# str_c, paste0
-# pivot_wider
 ```
-
-7. Проверьте, что `vs_wide` содержит ровно одну строку на участника.
 
 ```{r}
 # stopifnot, stop
@@ -351,7 +312,6 @@ all_data <- left_join(all_data, vs_wide, by = "ID")
 all_data <- left_join(all_data, gf_wide1, by = "ID")
 all_data
 ```
-Проверьте, что число строк в результате совпадает с числом участников в `dm` и что не появилось повторяющихся значений `ID`.
 
 ```{r}
 stopifnot(nrow(all_data) == nrow(dm))
@@ -367,36 +327,141 @@ n_missing
 ```
 
 В таблице all_data 170 строк (по одной на каждого участника). Столбцы ID, AGE, SEX, ARM, SCREENING 1_Height, SCREENING 1_Weight, rs429358, rs7412 и apoe_genotype заполнены полностью. Пропуски есть в лабораторных показателях (HGB — 4, VITB12 — 3) и в весе на визите WEEK 4 (16 пропусков) — это пациенты, у которых нет измерения на соответствующем визите.
+
 ## 3. Описательные статистики и отчёт
-
-Каждый выполняет свой подраздел в отдельной ветке, используя объединенные данные.
-Перед началом работы переключитесь на ветку `main`, получите актуальные изменения и убедитесь, что вам доступен объединённый датафрейм с данными других членов команды.
-
-Координатор объединяет подразделы и проверяет результаты.
-Проверьте согласованность значений в таблицах между разделами:
-например, минимум и максимум по всей таблице должны совпадать независимо от группировки.
-Если есть расхождения, найдите причину и опишите её: например, различия в фильтрации, группировке или обработке пропусков.
 
 ### 3.1. Анализ лабораторных результатов
 
-1. Для каждого лабораторного показателя рассчитайте статистики в каждой группе лечения. В таблице приведите:
-   - число непустых значений
-   - число пропущенных значений
-   - среднее (стандартное отклонение)
-   - медиана [25-й, 75-й процентили]
-   - минимум - максимум
-2. Постройте такую же таблицу для носителей и неносителей аллеля ε4.
-3. Оформите результаты в таблицы `flextable` с заголовками на русском или английском языке с указанием единиц измерения.
-4. Кратко прокомментируйте результаты, приведённые в таблицах.
+```{r}
+lab_arm <- summarise(
+  group_by(all_data, ARM),
+  HGB_count = sum(!is.na(HGB)),
+  HGB_miss = sum(is.na(HGB)),
+  HGB_stats = paste(
+    round(mean(HGB, na.rm = TRUE), 1),
+    " (",
+    round(sd(HGB, na.rm = TRUE), 1),
+    "); ",
+    round(median(HGB, na.rm = TRUE), 1),
+    " [",
+    round(quantile(HGB, 0.25, na.rm = TRUE), 1),
+    ", ",
+    round(quantile(HGB, 0.75, na.rm = TRUE), 1),
+    "]; ",
+    round(min(HGB, na.rm = TRUE), 1),
+    "–",
+    round(max(HGB, na.rm = TRUE), 1),
+    sep = ""
+  ),
+  B12_n = sum(!is.na(VITB12)),
+  B12_miss = sum(is.na(VITB12)),
+  B12_stats = paste(
+    round(mean(VITB12, na.rm = TRUE), 1),
+    " (",
+    round(sd(VITB12, na.rm = TRUE), 1),
+    "); ",
+    round(median(VITB12, na.rm = TRUE), 1),
+    " [",
+    round(quantile(VITB12, 0.25, na.rm = TRUE), 1),
+    ", ",
+    round(quantile(VITB12, 0.75, na.rm = TRUE), 1),
+    "]; ",
+    round(min(VITB12, na.rm = TRUE), 1),
+    "–",
+    round(max(VITB12, na.rm = TRUE), 1),
+    sep = ""
+  )
+)
+lab_arm
+```
 
 ```{r}
-# mutate, case_when, group_by, summarise
-# n, mean, median, sd, quantile, IQR
+all_data <- mutate(
+  all_data,
+  e4 = case_when(
+    apoe_genotype %in% c("ε2/ε4", "ε3/ε4", "ε4/ε4") ~ "Носители ε4",
+    apoe_genotype %in% c("ε2/ε2", "ε2/ε3", "ε3/ε3") ~ "Не носители ε4"
+  )
+)
 
-# round, str_c, paste0
-# flextable
-# см. документацию https://davidgohel.github.io
+table(all_data$e4)
 ```
+```{r}
+lab_e4 <- summarise(
+  group_by(all_data, e4),
+  HGB_count = sum(!is.na(HGB)),
+  HGB_miss = sum(is.na(HGB)),
+  HGB_stats = paste(
+    round(mean(HGB, na.rm = TRUE), 1),
+    " (",
+    round(sd(HGB, na.rm = TRUE), 1),
+    "); ",
+    round(median(HGB, na.rm = TRUE), 1),
+    " [",
+    round(quantile(HGB, 0.25, na.rm = TRUE), 1),
+    ", ",
+    round(quantile(HGB, 0.75, na.rm = TRUE), 1),
+    "]; ",
+    round(min(HGB, na.rm = TRUE), 1),
+    "–",
+    round(max(HGB, na.rm = TRUE), 1),
+    sep = ""
+  ),
+  B12_n = sum(!is.na(VITB12)),
+  B12_miss = sum(is.na(VITB12)),
+  B12_stats = paste(
+    round(mean(VITB12, na.rm = TRUE), 1),
+    " (",
+    round(sd(VITB12, na.rm = TRUE), 1),
+    "); ",
+    round(median(VITB12, na.rm = TRUE), 1),
+    " [",
+    round(quantile(VITB12, 0.25, na.rm = TRUE), 1),
+    ", ",
+    round(quantile(VITB12, 0.75, na.rm = TRUE), 1),
+    "]; ",
+    round(min(VITB12, na.rm = TRUE), 1),
+    "–",
+    round(max(VITB12, na.rm = TRUE), 1),
+    sep = ""
+  )
+)
+lab_e4
+```
+
+```{r}
+table_arm <- flextable(lab_arm)
+table_arm <- set_header_labels(
+  table_arm,
+  ARM = "Группа лечения",
+  HGB_count = "HGB, непустые значения",
+  HGB_miss = "HGB, пропуски",
+  HGB_stats = "HGB, ммоль/л: mean (SD); median [Q1, Q3]; min–max",
+  B12_n = "B12, непустые значения",
+  B12_miss = "B12, пропуски",
+  B12_stats = "B12, пмоль/л: mean (SD); median [Q1, Q3]; min–max"
+)
+table_arm <- autofit(table_arm)
+table_arm
+```
+
+```{r}
+table_e4 <- flextable(lab_e4)
+table_e4 <- set_header_labels(
+  table_e4,
+  e4 = "Носительство ε4",
+  HGB_count = "HGB, непустые значения",
+  HGB_miss = "HGB, пропуски",
+  HGB_stats = "HGB, ммоль/л: mean (SD); median [Q1, Q3]; min–max",
+  B12_n = "B12, непустые значения",
+  B12_miss = "B12, пропуски",
+  B12_stats = "B12, пмоль/л: mean (SD); median [Q1, Q3]; min–max"
+)
+table_e4 <- autofit(table_e4)
+table_e4
+```
+
+Средний уровень гемоглобина в обеих группах лечения примерно одинаковый (≈8.6–8.9 ммоль/л). Медианы близки к средним, распределение HGB симметричное. Уровень витамина B12 имеет выраженный разброс (от 101 до 1831 пмоль/л в группе Placebo), что является нормой для показателя: распределение асимметричное, поэтому медиана (≈320 pmol/L) лучше отражает типичное значение, чем среднее. Пропусков мало: 1–3 на показатель в каждой группе, что связано с отсутствием измерения у отдельных пациентов на визите SCREENING 1. Существенных различий между группами лечения и между носителями и неносителями ε4 по этим показателям не наблюдается.
 
 ### 3.2. Анализ витальных показателей
 
