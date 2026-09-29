@@ -7,6 +7,9 @@ author:
    - name: Василий Садовин
      url: https://github.com/Gromoron
      roles: генотип APOE
+   - name: Виктория Гаврилова
+     url: https://github.com/vicoso
+     roles: витальные показатели
 format:
   html:
     embed-resources: true
@@ -153,7 +156,11 @@ if (nrow(lb_repeats) > 0) {
 ```
 
 ### 1.3. Витальные показатели
+группы лечения, лабораторные показатели и визит с измерением веса.
 
+| Команда | Группы лечения (`ARM`) | Лабораторные показатели (`LBTESTCD`) | Визит для веса (`VISIT`) |
+
+| 4 | Placebo, Xanomeline Low Dose | HGB, PLAT | WEEK 4 |
 Файл `data/vs.csv` содержит результаты измерений витальных показателей участников исследования, включая рост и вес.
 Вам понадобятся следующие столбцы:
 
@@ -171,23 +178,86 @@ if (nrow(lb_repeats) > 0) {
 # read_csv
 # select, rename
 # count
+
+vit_data <- read_csv("data/vs.csv")
+table(vit_data$USUBJID)
+
+# сколько строк на одного пациента USUBJID
+vit_data %>% count(USUBJID)
+
+#'''
+#у нас пациенты занимают больше одной строки, значит это long-формат 
+#'''
+
+# Какое минимальное и максимальное число строк на одного участника?
+range(table(vit_data$USUBJID))
+
+# min - 21, max - 71
+
+# На каких визитах измеряли рост (`HEIGHT`) и вес (`WEIGHT`)?
+sort(unique(vit_data$VSTEST))
+vit_data %>%
+  filter(VSTEST %in% c("Height", "Weight")) %>%
+  distinct(VSTEST, VISIT)
+
+#'''
+#  VSTEST VISIT      
+#  <chr>  <chr>      
+#1 Height SCREENING 1
+#2 Weight SCREENING 1
+#3 Weight BASELINE   
+#4 Weight WEEK 2     
+#5 Weight WEEK 4     
+#6 Weight WEEK 6     
+#7 Weight WEEK 8     
+#8 Weight WEEK 12
+#''' 
 ```
 
 4. Оставьте только участников своей команды.
    Используйте для этого датафрейм `dm`, созданный координатором в разделе 1.1.
+```{r}
+vit_data_ourpats <- vit_data %>%
+  filter(USUBJID %in% dm$ID)
+```
+
 5. Оставьте измерения роста и веса на визите `SCREENING 1`, а также измерения веса на визите вашей команды.
 
 ```{r}
+#dm
+
+vit_data_w4_s1 <- vit_data %>%
+  filter(VISIT %in% c("WEEK 4", "SCREENING 1"))
+
 # left_join, semi_join
 # filter
 ```
+```{r}
 
+vit_data_hw <- vit_data_w4_s1 %>%
+  filter(VSTEST %in% c("Weight", "Height"))
+
+# left_join, semi_join
+# filter
+```
 6. Переведите данные в широкий формат и сохраните в переменной `vs_wide`.
    В датафрейме должны быть столбцы для всех трёх отобранных измерений.
    Подсказка: значение, которое вы передаёте в `names_from`, должно быть уникальным для каждого участника. Проверьте это до вызова `pivot_wider()`.
    Идентификатор участника должен находиться в столбце с названием `ID`.
 
 ```{r}
+# переименование в ID
+vit_data_hw_id <- vit_data_hw %>%
+  rename(
+    ID = USUBJID
+  )
+
+# перевод в широкий формат
+vs_wide <- vit_data_hw_id %>%
+  pivot_wider(
+    names_from = c(VISIT, VSTEST),
+    values_from = VSORRES
+  )
 # select
 # distinct, count
 # str_c, paste0
@@ -198,6 +268,23 @@ if (nrow(lb_repeats) > 0) {
 
 ```{r}
 # stopifnot, stop
+vs_wide_clean <- vs_wide %>%
+  select(ID, `SCREENING 1_Height`, `SCREENING 1_Weight`, `WEEK 4_Weight`)
+
+vs_wide_clean <- vs_wide_clean %>%
+  group_by(ID) %>%
+  summarise(
+    across(everything(), ~ first(na.omit(.))),
+    .groups = "drop"
+  )
+
+# проверка что ровно одна строка на участника
+stopifnot(
+  all(table(vs_wide_clean$ID) == 1)
+)
+
+# финально переименование
+vs_wide <- vs_wide_clean
 ```
 
 ### 1.4. Генотип APOE
