@@ -490,14 +490,12 @@ table_e4
 all_data
 # рассчитали bmi на скрининге
 
-bmi <- all_data$`SCREENING 1_Weight` / ((all_data$`SCREENING 1_Height`)/100)^2
-
+bmi <- all_data$`SCREENING 1_Weight` / ((all_data$`SCREENING 1_Height`) / 100)^2
 ```
 
 ```{r}
 # 2
 bmi_cat <- ifelse(bmi >= 18.5 & bmi < 25, "norm", "not norm")
-
 ```
 
 ```{r}
@@ -538,7 +536,6 @@ nn_result <- data.frame(
 )
 
 nn_result
-
 ```
 
 ```{r}
@@ -616,11 +613,77 @@ flextable(ε4_result)
 4. Кратко прокомментируйте результаты, приведённые в таблицах.
 
 ```{r}
+#add BMI parameter
+
+all_data <- all_data |>
+  mutate(
+    BMI = `SCREENING 1_Weight` / ((`SCREENING 1_Height` / 100)^2)
+  )
+
+# genotypes within control/condition
+all_data |>
+  count(ARM, apoe_genotype) |>
+  group_by(ARM) |>
+  mutate(val = sprintf("%d (%.1f%%)", n, n / sum(n) * 100)) |>
+  pivot_wider(
+    id_cols = ARM,
+    names_from = apoe_genotype,
+    values_from = val,
+    values_fill = "0 (0%)"
+  ) |>
+  flextable() |>
+  autofit()
+
+border_block <- fp_border_default()
+# 2-3. All statistics
+all_data |>
+  pivot_longer(
+    c(BMI, HGB, VITB12),
+    names_to = "Показатель",
+    values_to = "x"
+  ) |>
+  mutate(
+    Показатель = case_when(
+      Показатель == "BMI" ~ "BMI (кг/м²)",
+      Показатель == "HGB" ~ "HGB (ммоль/л)",
+      Показатель == "VITB12" ~ "VITB12 (пмоль/л)"
+    )
+  ) |>
+  group_by(Показатель, apoe_genotype) |>
+  summarise(
+    N = sum(!is.na(x)),
+    missing_data = sum(is.na(x)),
+    `Mean (SD)` = sprintf(
+      "%.2f (%.2f)",
+      mean(x, na.rm = TRUE),
+      sd(x, na.rm = TRUE)
+    ),
+    `Med [IQR]` = sprintf(
+      "%.2f [%.2f, %.2f]",
+      median(x, na.rm = TRUE),
+      quantile(x, 0.25, na.rm = TRUE),
+      quantile(x, 0.75, na.rm = TRUE)
+    ),
+    `Min - Max` = sprintf(
+      "%.2f - %.2f",
+      min(x, na.rm = TRUE),
+      max(x, na.rm = TRUE)
+    ),
+    .groups = "drop"
+  ) |>
+  flextable() |>
+  merge_v(j = 1) |>
+  hline(i = c(6, 12), border = border_block) |>
+  autofit()
+
 # mutate, case_when, group_by, summarise
 # n, mean, median, sd, quantile, IQR
 # flextable
 # см. документацию https://davidgohel.github.io
 ```
+# По этой таблице можно сказать, что тотальное большинство пациентов имеют генотип ε3/ε3 или ε3/ε4 (~46% и ~35% соответственно). 
+# медианы индекса массы тела и гемоглобина достаточно стабильны между всеми генотипами. наблюдается большой разброс значений и дисперсия концентрации виамина B12. Есть пропуски значений для 4 наблюдейние Гемоглобина (HGB) и 3 значений B12 (VIB12). Соотношение генотипов при применеии Плацебо и высокой дозы Ксаномелина приблизительно равны, за исключением ε4/ε4.
+
 
 ## 4. Дополнительные задания
 
