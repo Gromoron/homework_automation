@@ -223,7 +223,7 @@ vit_data_hw_id <- vit_data_hw %>%
 vs_wide <- vit_data_hw_id %>%
   pivot_wider(
     names_from = c(VISIT, VSTEST),
-    values_from = VSORRES
+    values_from = VSSTRESN
   )
 ```
 
@@ -485,7 +485,123 @@ table_e4
 # n, mean, median, sd, quantile, IQR
 # flextable
 # см. документацию https://davidgohel.github.io
+
+# 1 и 2
+all_data
+# рассчитали bmi на скрининге
+
+bmi <- all_data$`SCREENING 1_Weight` / ((all_data$`SCREENING 1_Height`)/100)^2
+
 ```
+
+```{r}
+# 2
+bmi_cat <- ifelse(bmi >= 18.5 & bmi < 25, "norm", "not norm")
+
+```
+
+```{r}
+# 3
+vika_all_data <- all_data
+vika_all_data$bmi <- bmi
+vika_all_data$bmi_cat <- bmi_cat
+
+# как количественный показатель
+
+vika_all_data %>%
+  group_by(ARM) %>%
+  summarise(
+    not_empty_vals = sum(!is.na(bmi)),
+    missing_vals = sum(is.na(bmi)),
+    mean = mean(bmi, na.rm = TRUE),
+    sd = sd(bmi, na.rm = TRUE),
+    median = median(bmi, na.rm = TRUE),
+    q1 = quantile(bmi, 0.25, na.rm = TRUE),
+    q3 = quantile(bmi, 0.75, na.rm = TRUE),
+    min = min(bmi, na.rm = TRUE),
+    max = max(bmi, na.rm = TRUE)
+  )
+```
+
+```{r}
+# как категорию норма / не норма:
+nn_counts <- table(vika_all_data$ARM, vika_all_data$bmi_cat)
+
+nn_percent <- prop.table(nn_counts, 1) * 100
+
+nn_result <- data.frame(
+  treatment = rownames(nn_counts),
+  norm_n = nn_counts[, "norm"],
+  norm_percent = round(nn_percent[, "norm"], 1),
+  not_norm_n = nn_counts[, "not norm"],
+  not_norm_percent = round(nn_percent[, "not norm"], 1)
+)
+
+nn_result
+
+```
+
+```{r}
+# 4 Вычислите число аллелей ε4 (0 / 1 / 2) у каждого участника и представьте BMI по этим категориям.
+
+vika_all_data$num_ε4 <- str_count(vika_all_data$apoe_genotype, "ε4")
+
+ε4_counts <- table(vika_all_data$bmi_cat, vika_all_data$num_ε4)
+
+ε4_percent <- prop.table(ε4_counts, 1) * 100
+
+ε4_result <- data.frame(
+  bmi_category = rownames(ε4_counts),
+  ε4_0 = ε4_counts[, "0"],
+  ε4_0_percent = round(ε4_percent[, "0"], 1),
+
+  ε4_1 = ε4_counts[, "1"],
+  ε4_1_percent = round(ε4_percent[, "1"], 1),
+
+  ε4_2 = ε4_counts[, "2"],
+  ε4_2_percent = round(ε4_percent[, "2"], 1)
+)
+
+ε4_result
+```
+
+```{r}
+# 5 Оформите результаты в таблицы `flextable` с заголовками на русском или английском языке.
+
+## статистики
+
+bmi_table <- vika_all_data %>%
+  group_by(ARM) %>%
+  summarise(
+    not_empty_vals = sum(!is.na(bmi)),
+    missing_vals = sum(is.na(bmi)),
+    mean = mean(bmi, na.rm = TRUE),
+    sd = sd(bmi, na.rm = TRUE),
+    median = median(bmi, na.rm = TRUE),
+    q1 = quantile(bmi, 0.25, na.rm = TRUE),
+    q3 = quantile(bmi, 0.75, na.rm = TRUE),
+    min = min(bmi, na.rm = TRUE),
+    max = max(bmi, na.rm = TRUE)
+  )
+
+flextable(bmi_table)
+
+## норма ненорма bmi
+flextable(nn_result)
+
+## число аллелей
+flextable(ε4_result)
+```
+
+
+# 6 Кратко прокомментируйте результаты, приведённые в таблицах.
+Индекс массы тела у плацебо и лекарства групп сопоставимы, разбросы тоже.
+
+В обеих категориях BMI большинство участников не имели аллеля ε4.
+Среди участников с норм BMI 58,4% имели 0 аллелей ε4, 35,6% — 1 и 5,9% — 2. 
+Среди участников с не норм BMI соответствующие значения - 56,5%, 42,0% и 1,4%. То есть у не норм BMI больше с ε4 аллелем визуально.
+
+
 
 ### 3.3. Анализ генотипа
 
