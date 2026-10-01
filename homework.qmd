@@ -694,12 +694,170 @@ all_data |>
 Проиллюстрируйте результаты из таблиц раздела 3 графиками.
 
 ```{r}
-# plot, boxplot, hist
+# HGB и VITB12 by treatment
+all_data |>
+  pivot_longer(c(HGB, VITB12), names_to = "Показатель", values_to = "value") |>
+  mutate(
+    Показатель = recode(
+      Показатель,
+      HGB = "HGB, ммоль/л",
+      VITB12 = "VITB12, пмоль/л"
+    )
+  ) |>
+  ggplot(aes(x = ARM, y = value, fill = ARM)) +
+  geom_boxplot(outlier.shape = NA) +
+  geom_jitter(width = 0.15, size = 1) +
+  facet_wrap(~Показатель, scales = "free_y") +
+  labs(
+    x = "Группа лечения",
+    y = NULL,
+    title = "Лабораторные показатели по группам лечения"
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "none",
+    axis.text.x = element_text(angle = 15, hjust = 1)
+  )
+```
 
-# ggplot
-# geom_boxplot, geom_violin
-# geom_point, geom_jitter
-# facet_wrap
+```{r}
+# HGB и VITB12 by ε4
+all_data |>
+  pivot_longer(c(HGB, VITB12), names_to = "Показатель", values_to = "value") |>
+  filter(!is.na(e4)) |>
+  mutate(
+    Показатель = recode(
+      Показатель,
+      HGB = "HGB, ммоль/л",
+      VITB12 = "VITB12, пмоль/л"
+    )
+  ) |>
+  ggplot(aes(x = e4, y = value, fill = e4)) +
+  geom_violin(alpha = 0.6) +
+  geom_jitter(width = 0.1, size = 1) +
+  facet_wrap(~Показатель, scales = "free_y") +
+  labs(
+    x = "Носитель ε4",
+    y = NULL,
+    title = "Лабораторные показатели по носительству ε4"
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "none",
+    axis.text.x = element_text(angle = 15, hjust = 1)
+  )
+```
+
+```{r}
+#  BMIdistribution by treatment
+ggplot(vika_all_data, aes(x = bmi, fill = ARM)) +
+  geom_histogram(bins = 15, position = "identity") +
+  facet_wrap(~ARM) +
+  labs(
+    x = "BMI, кг/м²",
+    y = "Число участников",
+    title = "Распределение BMI по группам лечения"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none")
+```
+
+```{r}
+# BMI by treatment boxplots
+vika_all_data |>
+  ggplot(aes(x = ARM, y = bmi, fill = ARM)) +
+  geom_boxplot(outlier.shape = NA) +
+  geom_jitter(width = 0.15, size = 1) +
+  labs(
+    x = "Группа лечения",
+    y = "BMI, кг/м²",
+    title = "Индекс массы тела по группам лечения"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none")
+```
+
+```{r}
+# Normal/not normal BMI by treatment
+vika_all_data |>
+  count(ARM, bmi_cat) |>
+  group_by(ARM) |>
+  mutate(percent = n / sum(n) * 100) |>
+  ggplot(aes(x = ARM, y = percent, fill = bmi_cat)) +
+  geom_col(position = "dodge") +
+  labs(
+    x = "Группа лечения",
+    y = "Доля участников, %",
+    fill = "Категория BMI",
+    title = "Категория BMI по группам лечения"
+  ) +
+  theme_minimal()
+```
+
+```{r}
+# BMI by ε4 allele
+vika_all_data |>
+  filter(!is.na(num_ε4)) |>
+  ggplot(aes(x = factor(num_ε4), y = bmi, fill = factor(num_ε4))) +
+  geom_boxplot(outlier.shape = NA) +
+  geom_jitter(width = 0.15, alpha = 0.4, size = 1) +
+  labs(
+    x = "Число аллелей ε4",
+    y = "BMI, кг/м²",
+    title = "Индекс массы тела по числу аллелей ε4"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none")
+```
+
+```{r}
+# APOE genotype distribution by treatment
+all_data |>
+  count(ARM, apoe_genotype) |>
+  group_by(ARM) |>
+  mutate(percent = n / sum(n) * 100) |>
+  ggplot(aes(x = apoe_genotype, y = percent, fill = ARM)) +
+  geom_col(position = "dodge") +
+  labs(
+    x = "Генотип APOE",
+    y = "Доля участников, %",
+    fill = "Группа лечения",
+    title = "Распределение генотипов APOE по группам лечения"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 30, hjust = 1))
+```
+
+```{r}
+# BMI, HGB and VITB12 by APOE genotype
+all_data |>
+  pivot_longer(
+    c(BMI, HGB, VITB12),
+    names_to = "Показатель",
+    values_to = "value"
+  ) |>
+  mutate(
+    Показатель = recode(
+      Показатель,
+      BMI = "BMI, кг/м²",
+      HGB = "HGB, ммоль/л",
+      VITB12 = "VITB12, пмоль/л"
+    )
+  ) |>
+  ggplot(aes(x = apoe_genotype, y = value, fill = apoe_genotype)) +
+  geom_boxplot(outlier.shape = NA) +
+  geom_jitter(width = 0.15, size = 0.8) +
+  facet_wrap(~Показатель, scales = "free_y") +
+  labs(
+    x = "Генотип APOE",
+    y = NULL,
+    title = "BMI и лабораторные показатели по генотипу APOE"
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "none",
+    axis.text.x = element_text(angle = 45, hjust = 1)
+  )
 ```
 
 ### 4.2. Таблицы gtsummary
