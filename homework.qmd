@@ -821,8 +821,7 @@ all_data |>
   mutate(percent = n / sum(n) * 100) |>
   ggplot(aes(x = apoe_genotype, y = percent, fill = ARM)) +
   geom_col(position = "dodge") +
-  labs(
-    x = "Генотип APOE",
+  labs(x = "Генотип APOE",
     y = "Доля участников, %",
     fill = "Группа лечения",
     title = "Распределение генотипов APOE по группам лечения"
@@ -849,8 +848,7 @@ all_data |>
   geom_boxplot(outlier.shape = NA) +
   geom_jitter(width = 0.15, size = 0.8) +
   facet_wrap(~Показатель, scales = "free_y") +
-  labs(
-    x = "Генотип APOE",
+  labs( x = "Генотип APOE",
     y = "Значение"
     title = "BMI и лабораторные показатели по генотипу APOE") +
   theme_minimal() +
